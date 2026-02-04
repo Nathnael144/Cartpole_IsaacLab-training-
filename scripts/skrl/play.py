@@ -74,6 +74,7 @@ simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
+import logging
 import os
 import random
 import time
@@ -82,6 +83,9 @@ import gymnasium as gym
 import skrl
 import torch
 from packaging import version
+
+# import logger
+logger = logging.getLogger(__name__)
 
 # check for minimum supported skrl version
 SKRL_VERSION = "1.4.3"
@@ -140,6 +144,14 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
+
+    # check if CUDA is available when device is set to CUDA, fall back to CPU if not
+    if env_cfg.sim.device.startswith("cuda") and not torch.cuda.is_available():
+        logger.warning(
+            f"CUDA device '{env_cfg.sim.device}' requested but PyTorch was not compiled with CUDA support. "
+            "Falling back to CPU device."
+        )
+        env_cfg.sim.device = "cpu"
 
     # configure the ML framework into the global skrl variable
     if args_cli.ml_framework.startswith("jax"):
